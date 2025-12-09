@@ -3,18 +3,18 @@ import Comment from "../models/Comment.js";
 import Post from "../models/Post.js";
 import Share from "../models/Share.js";
 import fs from "fs";
-import { 
-  handleCommentPost, 
-  handleCommentShare, 
-  handleReplyComment, 
-  handleLikeComment 
+import {
+  handleCommentPost,
+  handleCommentShare,
+  handleReplyComment,
+  handleLikeComment,
 } from "../services/notificationService.js";
 
 // Thêm comment mới cho post thường
 export const addComment = async (req, res) => {
   try {
     const { userId } = req.auth();
-    const { postId, content, comment_type ,parentCommentId } = req.body;
+    const { postId, content, comment_type, parentCommentId } = req.body;
     // const media = req.file;
 
     // let media_url = ''
@@ -23,7 +23,7 @@ export const addComment = async (req, res) => {
     //   const fileBuffer = fs.readFileSync(media.path)
     //   const response = await imagekit.upload({
     //     file: fileBuffer,
-    //     fileName: media.originalname, 
+    //     fileName: media.originalname,
     //   })
     //   media_url = response.url
     // }
@@ -60,7 +60,13 @@ export const addComment = async (req, res) => {
     if (parentCommentId) {
       // This is a reply to a comment
       const parentComment = await Comment.findById(parentCommentId);
-      await handleReplyComment(io, parentCommentId, comment._id, userId, parentComment.user);
+      await handleReplyComment(
+        io,
+        parentCommentId,
+        comment._id,
+        userId,
+        parentComment.user
+      );
     } else {
       // This is a comment on a post
       await handleCommentPost(io, postId, comment._id, userId, post.user);
@@ -81,6 +87,9 @@ export const addComment = async (req, res) => {
 export const getPostComments = async (req, res) => {
   try {
     const { postId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
 
     const comments = await Comment.find({
       post: postId,
@@ -88,16 +97,46 @@ export const getPostComments = async (req, res) => {
       post_type: "post",
     })
       .populate("user", "-email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Comment.countDocuments({
+      post: postId,
+      parent_comment: null,
+      post_type: "post",
+    });
+
+    const hasMore = page * limit < total;
 
     const commentsWithReplies = await Promise.all(
       comments.map(async (comment) => {
-        const replies = await Comment.find({ parent_comment: comment._id })
-          .populate("user")
+        // Get first level replies
+        const firstLevelReplies = await Comment.find({
+          parent_comment: comment._id,
+        })
+          .populate("user", "-email")
           .sort({ createdAt: 1 });
+
+        // Get nested replies for each first level reply
+        const repliesWithNestedReplies = await Promise.all(
+          firstLevelReplies.map(async (reply) => {
+            const nestedReplies = await Comment.find({
+              parent_comment: reply._id,
+            })
+              .populate("user", "-email")
+              .sort({ createdAt: 1 });
+
+            return {
+              ...reply.toObject(),
+              replies: nestedReplies,
+            };
+          })
+        );
+
         return {
           ...comment.toObject(),
-          replies,
+          replies: repliesWithNestedReplies,
         };
       })
     );
@@ -105,6 +144,9 @@ export const getPostComments = async (req, res) => {
     res.json({
       success: true,
       comments: commentsWithReplies,
+      hasMore,
+      totalComments: total,
+      currentPage: page,
     });
   } catch (error) {
     console.log(error);
@@ -144,10 +186,22 @@ export const addCommentToShare = async (req, res) => {
     if (parentCommentId) {
       // This is a reply to a comment
       const parentComment = await Comment.findById(parentCommentId);
-      await handleReplyComment(io, parentCommentId, commentShare._id, userId, parentComment.user);
+      await handleReplyComment(
+        io,
+        parentCommentId,
+        commentShare._id,
+        userId,
+        parentComment.user
+      );
     } else {
       // This is a comment on a share
-      await handleCommentShare(io, shareId, commentShare._id, userId, share.user);
+      await handleCommentShare(
+        io,
+        shareId,
+        commentShare._id,
+        userId,
+        share.user
+      );
     }
 
     res.json({
@@ -179,9 +233,23 @@ export const getPostCommentShare = async (req, res) => {
         const replies = await Comment.find({ parent_comment: comment._id })
           .populate("user")
           .sort({ createdAt: -1 });
+
+        const replyWithNestedReplies = await Promise.all(
+          replies.map(async (reply) => {
+            const nestedReplies = await Comment.find({
+              parent_comment: reply._id,
+            })
+              .populate("user")
+              .sort({ createdAt: -1 });
+            return {
+              ...reply.toObject(),
+              replies: nestedReplies,
+            };
+          })
+        );
         return {
           ...comment.toObject(),
-          replies,
+          replies: replyWithNestedReplies,
         };
       })
     );
@@ -218,11 +286,11 @@ export const likeComment = async (req, res) => {
       // Like
       comment.likes_count.push(userId);
       await comment.save();
-      
+
       // Send notification for like
       const io = req.app.get("io");
       await handleLikeComment(io, commentId, userId, comment.user);
-      
+
       res.json({ success: true, message: "Comment liked" });
     }
   } catch (error) {

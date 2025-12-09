@@ -1,5 +1,5 @@
 import { BadgeCheck, X, Send, Heart, Trash2, Edit, Reply } from "lucide-react";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import moment from "moment";
 import api from "../api/axios";
 import { useAuth } from "@clerk/clerk-react";
@@ -30,7 +30,9 @@ const CommentShareModel = ({
   const [commentToDelete, setCommentToDelete] = useState(null);
 
   const { getToken } = useAuth();
-  // const modalRef = useOutsideClickOrScroll(onClose)
+ 
+
+
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -43,18 +45,25 @@ const CommentShareModel = ({
   // Sync comments count khi modal được mở và comments đã load xong
   useEffect(() => {
     if (isOpen && comments.length >= 0 && onCommentsCountSync && !loading) {
-      // Tính tổng số comments (bao gồm cả replies)
       const totalComments = comments.reduce((total, comment) => {
-        return total + 1 + (comment.replies ? comment.replies.length : 0);
+        let count = 1; // Main comment
+
+        if (comment.replies && comment.replies.length > 0) {
+          count += comment.replies.length; // First level replies
+
+          // Count nested replies
+          comment.replies.forEach((reply) => {
+            if (reply.replies && reply.replies.length > 0) {
+              count += reply.replies.length;
+            }
+          });
+        }
+
+        return total + count;
       }, 0);
 
-      // console.log(
-      //   `Total comments calculated: ${totalComments} for post ${post._id}`
-      // );
-      // Sync với PostCard và lưu vào sessionStorage
       onCommentsCountSync(totalComments);
 
-      // Lưu vào sessionStorage để persist qua navigation
       try {
         sessionStorage.setItem(
           `commentCount_${post._id}`,
@@ -144,24 +153,33 @@ const CommentShareModel = ({
         setReplyContent("");
         setReplyingTo(null);
 
-        // Add reply to the specific comment
+        // Update state with nested replies
         setComments((prev) =>
           prev.map((c) => {
+            // If replying to main comment
             if (c._id === parentCommentId) {
-              return {
-                ...c,
-                replies: [...(c.replies || []), data.comment],
-              };
+              return { ...c, replies: [...(c.replies || []), data.comment] };
             }
+
+            // If replying to a reply (nested)
+            if (c.replies && c.replies.length > 0) {
+              const updatedReplies = c.replies.map((reply) => {
+                if (reply._id === parentCommentId) {
+                  return {
+                    ...reply,
+                    replies: [...(reply.replies || []), data.comment],
+                  };
+                }
+                return reply;
+              });
+              return { ...c, replies: updatedReplies };
+            }
+
             return c;
           })
         );
 
-        // Call the callback to update comment count
-        if (onCommentAdded) {
-          console.log("Adding 1 reply");
-          onCommentAdded(1);
-        }
+        if (onCommentAdded) onCommentAdded(1);
       } else {
         toast.error(data.message || "Cannot add reply");
       }
@@ -189,29 +207,43 @@ const CommentShareModel = ({
         setEditingCommentId(null);
         setEditContent("");
 
-        // Update comment in the list
         setComments((prev) =>
           prev.map((c) => {
+            // Update main comment
             if (c._id === commentId) {
               return { ...c, content: editContent.trim() };
             }
-            // Also check in replies
+
+            // Update first level replies
             if (c.replies && c.replies.length > 0) {
-              const updatedReplies = c.replies.map((reply) =>
-                reply._id === commentId
-                  ? { ...reply, content: editContent.trim() }
-                  : reply
-              );
+              const updatedReplies = c.replies.map((reply) => {
+                if (reply._id === commentId) {
+                  return { ...reply, content: editContent.trim() };
+                }
+
+                // Update nested replies
+                if (reply.replies && reply.replies.length > 0) {
+                  return {
+                    ...reply,
+                    replies: reply.replies.map((nestedReply) =>
+                      nestedReply._id === commentId
+                        ? { ...nestedReply, content: editContent.trim() }
+                        : nestedReply
+                    ),
+                  };
+                }
+                return reply;
+              });
               return { ...c, replies: updatedReplies };
             }
             return c;
           })
         );
       } else {
-        toast.error(data.message || "Cannot update comment");
+        toast.error(data.message || "Cannot update the comment");
       }
     } catch (error) {
-      toast.error("Cannot update comment");
+      toast.error("Cannot update the comment");
       console.error(error);
     }
   };
@@ -222,31 +254,41 @@ const CommentShareModel = ({
   };
 
   const handleCommentDeleted = (deletedCommentId, postId) => {
-    // Xóa comment khỏi danh sách
     setComments((prev) => {
-      // Tìm và xóa comment chính
+      // Filter out deleted comment from top level
       const filteredComments = prev.filter((c) => c._id !== deletedCommentId);
 
-      // Tìm và xóa reply trong các comment
+      // Remove deleted comment from all nested levels
       return filteredComments.map((c) => {
         if (c.replies && c.replies.length > 0) {
-          return {
-            ...c,
-            replies: c.replies.filter(
-              (reply) => reply._id !== deletedCommentId
-            ),
-          };
+          // Filter out deleted reply from first level
+          const filteredReplies = c.replies.filter(
+            (reply) => reply._id !== deletedCommentId
+          );
+
+          // Check and update nested replies (second level)
+          const updatedReplies = filteredReplies.map((reply) => {
+            if (reply.replies && reply.replies.length > 0) {
+              return {
+                ...reply,
+                replies: reply.replies.filter(
+                  (nestedReply) => nestedReply._id !== deletedCommentId
+                ),
+              };
+            }
+            return reply;
+          });
+
+          return { ...c, replies: updatedReplies };
         }
         return c;
       });
     });
 
-    // Cập nhật comment count
     if (onCommentAdded) {
-      onCommentAdded(-1); // Giảm 1 comment
+      onCommentAdded(-1);
     }
 
-    // Đóng modal
     setIsDeleteModalOpen(false);
     setCommentToDelete(null);
   };
@@ -751,6 +793,15 @@ const CommentShareModel = ({
                                     <span>{reply.likes_count.length}</span>
                                   )}
                                 </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReply(reply._id, reply.user.username);
+                                  }}
+                                  className="text-xs hover:text-indigo-500 transition cursor-pointer"
+                                >
+                                  {t("Reply")}
+                                </button>
                                 {reply.user._id === currentUser._id && (
                                   <>
                                     <button
@@ -776,6 +827,214 @@ const CommentShareModel = ({
                                   </>
                                 )}
                               </div>
+
+                              {replyingTo === reply._id && (
+                                <div className="mt-2">
+                                  <form
+                                    onSubmit={(e) =>
+                                      handleSubmitReply(e, reply._id)
+                                    }
+                                    className="flex gap-2"
+                                  >
+                                    <img
+                                      src={currentUser.profile_picture}
+                                      alt=""
+                                      className="w-6 h-6 rounded-full object-cover"
+                                    />
+                                    <div className="flex-1 flex items-center bg-gray-50 border border-gray-300 rounded-full px-2 py-1 focus-within:border-indigo-500 transition">
+                                      <input
+                                        type="text"
+                                        value={replyContent}
+                                        onChange={(e) =>
+                                          setReplyContent(e.target.value)
+                                        }
+                                        placeholder={`Reply to @${reply.user.username}...`}
+                                        className="flex-1 bg-transparent outline-none text-xs text-zinc-900 placeholder-gray-400"
+                                        disabled={replySubmitting}
+                                        autoFocus
+                                      />
+                                      <button
+                                        type="submit"
+                                        disabled={
+                                          !replyContent.trim() ||
+                                          replySubmitting
+                                        }
+                                        className="ml-1 p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {replySubmitting ? (
+                                          <div className="animate-spin rounded-full h-2 w-2 border-b border-white"></div>
+                                        ) : (
+                                          <Send className="w-2 h-2" />
+                                        )}
+                                      </button>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setReplyingTo(null);
+                                        setReplyContent("");
+                                      }}
+                                      className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition"
+                                    >
+                                      {t("Cancel")}
+                                    </button>
+                                  </form>
+                                </div>
+                              )}
+
+                              {reply.replies && reply.replies.length > 0 && (
+                                <div className="mt-2 space-y-2 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                  {reply.replies.map((nestedReply) => (
+                                    <div
+                                      key={nestedReply._id}
+                                      className="flex gap-2"
+                                    >
+                                      <img
+                                        onClick={() =>
+                                          navigate(
+                                            `/profile/` + nestedReply.user._id
+                                          )
+                                        }
+                                        src={nestedReply.user.profile_picture}
+                                        alt=""
+                                        className="w-5 h-5 rounded-full object-cover cursor-pointer"
+                                      />
+                                      <div className="flex-1">
+                                        <div className="bg-gray-50 dark:bg-primary-dark rounded-lg px-2 py-1">
+                                          <div className="flex items-center gap-1 mb-1">
+                                            <span
+                                              onClick={() =>
+                                                navigate(
+                                                  `/profile/` +
+                                                    nestedReply.user._id
+                                                )
+                                              }
+                                              className="font-medium text-xs text-zinc-900 dark:text-white cursor-pointer hover:underline"
+                                            >
+                                              {nestedReply.user.full_name}
+                                            </span>
+                                          </div>
+                                          {editingCommentId ===
+                                          nestedReply._id ? (
+                                            <div className="flex gap-1 mt-1">
+                                              <input
+                                                value={editContent}
+                                                onChange={(e) =>
+                                                  setEditContent(e.target.value)
+                                                }
+                                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") {
+                                                    handleUpdateComment(
+                                                      nestedReply._id
+                                                    );
+                                                  } else if (
+                                                    e.key === "Escape"
+                                                  ) {
+                                                    setEditingCommentId(null);
+                                                    setEditContent("");
+                                                  }
+                                                }}
+                                                autoFocus
+                                              />
+                                              <button
+                                                onClick={() =>
+                                                  handleUpdateComment(
+                                                    nestedReply._id
+                                                  )
+                                                }
+                                                className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                                              >
+                                                {t("Save")}
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-gray-800 dark:text-gray-400">
+                                              {nestedReply.content}
+                                            </p>
+                                          )}
+                                        </div>
+
+                                        {/* Nested Reply Actions */}
+                                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                          <span>
+                                            {moment(
+                                              nestedReply.createdAt
+                                            ).fromNow()}
+                                          </span>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleLikeComment(
+                                                nestedReply._id
+                                              );
+                                            }}
+                                            className="flex items-center gap-1 hover:text-red-500 transition"
+                                          >
+                                            <Heart
+                                              className={`w-3 h-3 ${
+                                                nestedReply.likes_count?.includes(
+                                                  currentUser._id
+                                                )
+                                                  ? "text-red-500 fill-red-500"
+                                                  : ""
+                                              }`}
+                                            />
+                                            {nestedReply.likes_count?.length >
+                                              0 && (
+                                              <span>
+                                                {nestedReply.likes_count.length}
+                                              </span>
+                                            )}
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleReply(
+                                                reply._id,
+                                                nestedReply.user.username
+                                              );
+                                            }}
+                                            className="text-xs hover:text-indigo-500 transition cursor-pointer"
+                                          >
+                                            {t("Reply")}
+                                          </button>
+                                          {nestedReply.user._id ===
+                                            currentUser._id && (
+                                            <>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setEditingCommentId(
+                                                    nestedReply._id
+                                                  );
+                                                  setEditContent(
+                                                    nestedReply.content
+                                                  );
+                                                }}
+                                                className="text-xs hover:text-indigo-500 transition cursor-pointer"
+                                              >
+                                                {t("Edit")}
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteComment(
+                                                    nestedReply._id
+                                                  );
+                                                }}
+                                                className="text-xs hover:text-red-500 transition cursor-pointer"
+                                              >
+                                                {t("Delete")}
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}

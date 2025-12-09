@@ -12,6 +12,7 @@ import {
 } from "../features/messages/messagesSlice";
 import { useSocket } from "../contexts/SocketContext";
 import toast from "react-hot-toast";
+import MediaModal from "../components/profile/MediaModal";
 // import useSound from "../hooks/useSound";
 
 const ChatBox = () => {
@@ -28,6 +29,8 @@ const ChatBox = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isOpenMediaModal, setIsOpenMediaModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
@@ -204,10 +207,20 @@ const ChatBox = () => {
                         src={message.media_url}
                         className="w-full max-w-sm rounded-lg mb-1"
                         alt=""
+                        onClick={() => {
+                          setIsOpenMediaModal(true);
+                          setSelectedImage(message.media_url);
+                        }}
                       />
                     )}
                     <p>{message.text}</p>
                   </div>
+                  <MediaModal
+                    isOpen={isOpenMediaModal}
+                    onClose={() => setIsOpenMediaModal(false)}
+                    imageUrl={selectedImage}
+                    type="media"
+                  />
                 </div>
               ))}
 

@@ -56,6 +56,7 @@ export const sendMessage = async (req, res) => {
       const response = await imagekit.upload({
         file: fileBuffer,
         fileName: image.originalname,
+        folder:"messages"
       });
 
       media_url = imagekit.url({
