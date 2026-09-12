@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { assets } from "../assets/assets";
 import { useNavigate, Link } from "react-router-dom";
 import Menuitems from "./Menuitems";
@@ -7,12 +7,30 @@ import { UserButton, useClerk } from "@clerk/clerk-react";
 import { useSelector } from "react-redux";
 import "../css/Button.css";
 import { useTranslation } from "react-i18next";
+import Owl from "./fun/Owl";
 
 const SideBar = ({ sideBarOpen, setSideBarOpen }) => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.value);
   const { signOut } = useClerk();
   const { t } = useTranslation();
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+
+    checkTheme();
+
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div
@@ -38,6 +56,14 @@ const SideBar = ({ sideBarOpen, setSideBarOpen }) => {
           <CirclePlus className="w-5 h-5" />
           {t("Create Post")}
         </Link>
+      </div>
+
+      <div>
+        {isDark && (
+          <div className="mb-20">
+            <Owl />
+          </div>
+        )}
       </div>
 
       <div className="w-full border-t border-gray-200 dark:border-gray-700 p-4 px-7 flex items-center justify-between">

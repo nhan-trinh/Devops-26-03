@@ -3,6 +3,7 @@ import { menuItemsData } from "../assets/assets";
 import { NavLink } from "react-router-dom";
 import { useNotification } from "../contexts/NotificationContext";
 import { useTranslation } from "react-i18next";
+import Stick from "./fun/Stick";
 
 const Menuitems = ({ setSideBarOpen }) => {
   const { t } = useTranslation();

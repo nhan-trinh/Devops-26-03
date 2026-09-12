@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import CoverPhoto from "../components/profile/CoverPhoto";
 import MediaModal from "../components/profile/MediaModal";
 import CommentModal from "../components/CommentModal";
+import Cat from "../components/fun/Cat";
 
 const Profile = ({ post }) => {
   const currentUser = useSelector((state) => state.user.value);
@@ -54,6 +55,7 @@ const Profile = ({ post }) => {
       toast.error(error.message);
     }
   };
+  
   // Handler để cập nhật post sau khi edit
   const handlePostUpdated = (postId, newContent) => {
     setPosts((prevFeed) =>
@@ -125,62 +127,89 @@ const Profile = ({ post }) => {
 
           {activeTab === "posts" && (
             <div className="mt-6 flex flex-col items-center gap-6">
-              {posts
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                .map((post) => (
-                  <PostCard
-                    key={post._id}
-                    post={post}
-                    onPostUpdated={handlePostUpdated}
-                    onPostDeleted={handlePostDeleted}
-                  />
-                ))}
+              {posts.length > 0 ? (
+                posts
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((post) => (
+                    <PostCard
+                      key={post._id}
+                      post={post}
+                      onPostUpdated={handlePostUpdated}
+                      onPostDeleted={handlePostDeleted}
+                    />
+                  ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <Cat />
+                  <p className="text-gray-500 dark:text-gray-400 text-center">
+                    No posts yet. Time for a cat nap! 😴
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === "shares" && (
             <div className="mt-6 flex flex-col items-center gap-6">
-              {shares
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                .map((share) => (
-                  <SharePostCard
-                    key={share._id}
-                    post={share}
-                    onPostUpdated={handlePostUpdated}
-                    onPostDeleted={handlePostDeleted}
-                  />
-                ))}
+              {shares.length > 0 ? (
+                shares
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((share) => (
+                    <SharePostCard
+                      key={share._id}
+                      post={share}
+                      onPostUpdated={handlePostUpdated}
+                      onPostDeleted={handlePostDeleted}
+                    />
+                  ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <Cat />
+                  <p className="text-gray-500 dark:text-gray-400 text-center">
+                    No shares yet. The cat is sleeping! 😺
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === "media" && (
             <div className="flex flex-wrap mt-6 max-w-6xl">
-              {posts
-                .filter((post) => post.image_urls.length > 0)
-                .map((post) => (
-                  <React.Fragment key={post._id}>
-                    {post.image_urls.map((image, index) => (
-                      <div
-                        key={index}
-                        className="relative group cursor-pointer"
-                        onClick={() => {
-                          setSelectedImage(image);
-                          setSelectedPost(post)
-                          setIsOpenMediaModal(true);
-                        }}
-                      >
-                        <img
-                          src={image}
-                          className="w-64 aspect-video object-cover border border-gray-300 rounded"
-                          alt=""
-                        />
-                        <p className="absolute bottom-0 right-0 text-xs p-1 px-3 backdrop-blur-xl text-white opacity-0 group-hover:opacity-100 transition duration-300">
-                          {t("Posted")} {moment(post.createdAt).fromNow()}
-                        </p>
-                      </div>
-                    ))}
-                  </React.Fragment>
-                ))}
+              {posts.filter((post) => post.image_urls.length > 0).length > 0 ? (
+                posts
+                  .filter((post) => post.image_urls.length > 0)
+                  .map((post) => (
+                    <React.Fragment key={post._id}>
+                      {post.image_urls.map((image, index) => (
+                        <div
+                          key={index}
+                          className="relative group cursor-pointer"
+                          onClick={() => {
+                            setSelectedImage(image);
+                            setSelectedPost(post);
+                            setIsOpenMediaModal(true);
+                          }}
+                        >
+                          <img
+                            src={image}
+                            className="w-64 aspect-video object-cover border border-gray-300 rounded"
+                            alt=""
+                          />
+                          <p className="absolute bottom-0 right-0 text-xs p-1 px-3 backdrop-blur-xl text-white opacity-0 group-hover:opacity-100 transition duration-300">
+                            {t("Posted")} {moment(post.createdAt).fromNow()}
+                          </p>
+                        </div>
+                      ))}
+                    </React.Fragment>
+                  ))
+              ) : (
+                <div className="w-full flex flex-col items-center justify-center py-12 space-y-4">
+                  <Cat />
+                  <p className="text-gray-500 dark:text-gray-400 text-center">
+                    No media to display. Even cats need their beauty sleep! 💤
+                  </p>
+                </div>
+              )}
             </div>
           )}
           {selectedPost && (

@@ -9,7 +9,8 @@ import api from "../api/axios";
 import toast from "react-hot-toast";
 import SkeletonStoriesBar from "../components/SkeletonStoriesBar";
 import SkeletonPostCard from "../components/SkeletonPostCard";
-const WhoToFollow = lazy(() => import("../components/Whotofollow"))
+import Fox from "../components/fun/Stick";
+const WhoToFollow = lazy(() => import("../components/Whotofollow"));
 
 const Feed = () => {
   const [feed, setFeed] = useState([]);
@@ -227,11 +228,12 @@ const Feed = () => {
         </div>
       </div>
 
-      <div className="max-xl:hidden sticky top-0">
-        <div className="max-w-xs bg-white dark:bg-primary-dark text-xs p-4 rounded-md inline-flex flex-col gap-2 shadow">
-          <WhoToFollow /> 
-        </div>
+     <div className="hidden xl:block w-[350px] space-y-4 sticky top-4 h-fit">
+        <WhoToFollow />
         <RecentMessage />
+        <div className="-mt-12">
+          <Fox />
+        </div>
       </div>
     </div>
   );

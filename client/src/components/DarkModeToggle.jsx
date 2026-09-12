@@ -38,7 +38,7 @@ const DarkModeToggle = () => {
     });
   };
 
-  return (
+  return (  
     <div className="fixed z-50 bottom-5 right-5 select-none">
       <label className="theme-switch">
         <input 
