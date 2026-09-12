@@ -7,15 +7,50 @@ import Post from "../models/Post.js";
 import { inngest } from "../inngest/index.js";
 import Share from "../models/Share.js";
 import { handleFollow } from "../services/notificationService.js";
+import { clerkClient } from "@clerk/express";
+
+export const ensureUserExists = async (userId) => {
+  try {
+    let user = await User.findById(userId);
+    if (!user) {
+      const clerkUser = await clerkClient.users.getUser(userId);
+      if (clerkUser) {
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress || "";
+        let username = email ? email.split("@")[0] : `user_${userId.slice(-6)}`;
+        const existingUsername = await User.findOne({ username });
+        if (existingUsername) {
+          username = `${username}${Math.floor(Math.random() * 10000)}`;
+        }
+        const fullName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || username;
+        user = await User.create({
+          _id: userId,
+          email,
+          full_name: fullName,
+          profile_picture: clerkUser.imageUrl || "",
+          username,
+        });
+        console.log(`Auto-synced user ${username} (${userId}) from Clerk into MongoDB`);
+      }
+    }
+    return user;
+  } catch (err) {
+    console.error("Error ensuring user exists:", err.message);
+    return null;
+  }
+};
 
 export const getUserData = async (req, res) => {
   try {
     const { userId } = req.auth();
-    const user = await User.findById(userId).select("-email -password -__v");
+    let user = await ensureUserExists(userId);
+    if (!user) {
+      user = await User.findById(userId);
+    }
     if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
-    res.json({ success: true, user });
+    const sanitizedUser = await User.findById(userId).select("-email -password -__v");
+    res.json({ success: true, user: sanitizedUser });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
@@ -227,6 +262,7 @@ export const sendConnectionRequest = async (req, res) => {
 export const getUserConnection = async (req, res) => {
   try {
     const { userId } = req.auth();
+    await ensureUserExists(userId);
     const user = await User.findById(userId)
       .populate({
         path: "connections",
@@ -243,9 +279,13 @@ export const getUserConnection = async (req, res) => {
       .select("-email -password -__v");
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.json({
+        success: true,
+        connections: [],
+        followers: [],
+        following: [],
+        pendingConnections: []
+      });
     }
 
     const connections = user.connections;

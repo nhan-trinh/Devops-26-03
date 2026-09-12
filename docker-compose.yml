@@ -27,7 +27,6 @@ services:
     environment:
       PORT: 4000
       FRONTEND_URL: http://localhost:5173
-      MONGODB_URL: mongodb://mongodb:27017
       INNGEST_DEV: "1"
       INNGEST_BASE_URL: http://inngest:8288
     depends_on:

@@ -239,6 +239,8 @@ export interface APIGatewayProxyWebsocketEventV2WithRequestContext<TRequestConte
     body?: string;
     isBase64Encoded: boolean;
     stageVariables?: APIGatewayProxyEventStageVariables;
+    queryStringParameters?: APIGatewayProxyEventQueryStringParameters;
+    multiValueQueryStringParameters?: APIGatewayProxyEventMultiValueQueryStringParameters;
 }
 
 /**
@@ -256,7 +258,7 @@ export interface APIGatewayEventRequestContextJWTAuthorizer {
     integrationLatency: number;
     jwt: {
         claims: { [name: string]: string | number | boolean | string[] };
-        scopes: string[];
+        scopes: string[] | null;
     };
 }
 
