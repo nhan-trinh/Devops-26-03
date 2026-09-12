@@ -1,0 +1,98 @@
+services:
+  frontend:
+    build:
+      context: ./client
+      args:
+        VITE_BASEURL: http://localhost:4000
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-pk_test_Zm9uZC1tdWxlLTIzLmNsZXJrLmFjY291bnRzLmRldiQ}
+    container_name: scm-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - scm-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./server
+    container_name: scm-backend
+    init: true
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./server/.env
+    environment:
+      PORT: 4000
+      FRONTEND_URL: http://localhost:5173
+      MONGODB_URL: mongodb://mongodb:27017
+      INNGEST_DEV: "1"
+      INNGEST_BASE_URL: http://inngest:8288
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - scm-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7
+    container_name: scm-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - scm-network
+    restart: unless-stopped
+
+  inngest:
+    image: inngest/inngest:latest
+    container_name: scm-inngest
+    command: inngest dev -u http://backend:4000/api/inngest
+    ports:
+      - "8288:8288"
+      - "8289:8289"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - scm-network
+    restart: unless-stopped
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: scm-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - scm-network
+    restart: unless-stopped
+
+networks:
+  scm-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
