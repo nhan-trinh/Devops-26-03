@@ -1,0 +1,17 @@
+# Cấu hình chứa mật khẩu - KHÔNG commit
+.env
+
+# Dependencies
+node_modules/
+
+# Kết quả build
+frontend/dist/
+backend/public/
+lab/backend/public/
+
+# Log
+npm-debug.log*
+*.log
+
+# macOS
+.DS_Store
