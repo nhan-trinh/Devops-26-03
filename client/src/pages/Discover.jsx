@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { use, useEffect, useState } from "react";
 import { dummyConnectionsData } from "../assets/assets";
 import { Search } from "lucide-react";

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useRef, useState } from "react";
 import { ImageIcon, SendHorizonal } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";

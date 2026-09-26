@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import { menuItemsData } from "../assets/assets";
 import { NavLink } from "react-router-dom";

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import { assets } from "../assets/assets";
 import { Star } from "lucide-react";

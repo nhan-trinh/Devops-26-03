@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useCallback, useRef, lazy } from "react";
 import { assets } from "../assets/assets";
 import StoriesBar from "../components/StoriesBar";

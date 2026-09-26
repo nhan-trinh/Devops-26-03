@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components, no-unused-vars */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useSocket } from "./SocketContext";
 import { useAuth, useUser } from "@clerk/clerk-react";

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Bell, Check, Trash2, RefreshCw } from "lucide-react";

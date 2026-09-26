@@ -71,11 +71,6 @@ const EditShareModal = ({ isOpen, onClose, post, onPostUpdated }) => {
 
   if (!isOpen) return null;
 
-  const postWithHashtags = content.replace(
-    /(#\w+)/g,
-    '<span class="text-indigo-600 font-medium">$1</span>'
-  );
-
   return (
     <div className="fixed inset-0 z-[110] min-h-screen bg-black/30 backdrop-blur flex items-center justify-center p-4">
       <div
@@ -145,8 +140,7 @@ const EditShareModal = ({ isOpen, onClose, post, onPostUpdated }) => {
 
           {/* Images (if any) */}
           <div
-            onClick={() => setIsOriginalPostCommentOpen(true)}
-            className="mx-4 mb-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
+            className="mx-4 mb-4 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg overflow-hidden bg-gray-50"
           >
             <div className="p-3">
               {/* Header người đăng bài gốc */}

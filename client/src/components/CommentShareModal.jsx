@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { BadgeCheck, X, Send, Heart, Trash2, Edit, Reply } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import moment from "moment";
