@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db:
+    # Build từ Dockerfile trong thư mục db đã có sẵn
+    build:
+      context: ./db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dictuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dictpass}
+      POSTGRES_DB: ${POSTGRES_DB:-dictionary}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  web:
+    # Build từ Dockerfile ở thư mục gốc vừa tạo
+    build:
+      context: .
+    environment:
+      DB_HOST: db
+      DB_USER: ${POSTGRES_USER:-dictuser}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-dictpass}
+      DB_NAME: ${POSTGRES_DB:-dictionary}
+      PORT: 3000
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  pgdata:
