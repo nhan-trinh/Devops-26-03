@@ -1,4 +1,4 @@
-name: CI/CD - Build and Push Docker Images to GHCR
+name: CI - Build and Push Docker Images to GHCR
 
 on:
   push:
@@ -11,21 +11,44 @@ on:
       - '.github/workflows/**'
   workflow_dispatch: # Cho phép trigger thủ công từ giao diện GitHub Actions
 
-# Khai báo quyền cấp cho GITHUB_TOKEN để đẩy Docker image vào GHCR
-permissions:
-  contents: read
-  packages: write
-
 env:
   REGISTRY: ghcr.io
 
 jobs:
   # ==========================================
-  # Job 1: Build & Push Backend Docker Image
+  # Job 1: Build Backend (Kiểm tra build BE)
   # ==========================================
   build-backend:
-    name: Build & Push Backend
+    name: Build BE
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Image (Verify)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  # ==========================================
+  # Job 2: Push Backend (Đẩy image BE lên GHCR)
+  # ==========================================
+  push-backend:
+    name: Push BE
+    needs: build-backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,7 +73,7 @@ jobs:
             type=sha,format=short,prefix=sha-
             type=ref,event=branch
 
-      - name: Build and push Backend Docker image
+      - name: Push Backend Image to GHCR
         uses: docker/build-push-action@v6
         with:
           context: ./server
@@ -58,15 +81,42 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend
 
   # ==========================================
-  # Job 2: Build & Push Frontend Docker Image
+  # Job 3: Build Frontend (Kiểm tra build FE)
   # ==========================================
   build-frontend:
-    name: Build & Push Frontend
+    name: Build FE
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Frontend Image (Verify)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./client
+          file: ./client/Dockerfile
+          push: false
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  # ==========================================
+  # Job 4: Push Frontend (Đẩy image FE lên GHCR)
+  # ==========================================
+  push-frontend:
+    name: Push FE
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -91,7 +141,7 @@ jobs:
             type=sha,format=short,prefix=sha-
             type=ref,event=branch
 
-      - name: Build and push Frontend Docker image
+      - name: Push Frontend Image to GHCR
         uses: docker/build-push-action@v6
         with:
           context: ./client
@@ -99,5 +149,4 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend
