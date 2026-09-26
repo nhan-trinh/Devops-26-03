@@ -1,0 +1,56 @@
+services:
+  # 1. Cơ sở dữ liệu PostgreSQL
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: dictionary_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tuandev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-DongA@2026}
+      POSTGRES_DB: ${POSTGRES_DB:-tudien}
+    ports:
+      - "${DB_PORT:-55432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tuandev} -d ${POSTGRES_DB:-tudien}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Backend API (Node.js / Express)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dictionary_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-tuandev}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-DongA@2026}
+      DB_NAME: ${POSTGRES_DB:-tudien}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  # 3. Frontend Web (React + Vite + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dictionary_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  db_data:

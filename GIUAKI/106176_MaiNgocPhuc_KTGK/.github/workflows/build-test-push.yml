@@ -1,0 +1,80 @@
+name: Build, Test and Push
+
+# ===================================================================
+# WORKFLOW CHÍNH - chạy khi code đã vào main.
+#
+# Nhiệm vụ: build -> test -> đẩy image lên GHCR.
+# Đây là file tạo ra image thật để deploy.
+#
+# Phân vai với ci.yml:
+#   ci.yml              -> chạy trên Pull Request (gác cổng, KHÔNG push image)
+#   build-test-push.yml -> chạy khi push vào main (tạo image thật)
+# Hai file không bao giờ chạy cùng lúc.
+#
+# Đánh đổi của file này: BUILD 2 LẦN - một lần để test, một lần để push
+# (xem ghi chú ở bước 3). Đổi lại nó ngắn, đọc hết trong một lượt.
+# ===================================================================
+
+# Khi nào chạy?
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # thêm nút "Run workflow" trong tab Actions để chạy tay
+
+# Biến dùng chung
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}/web
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Cấp quyền push image lên GHCR
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Bước 1: Lấy code từ repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Bước 2: Đăng nhập GHCR
+      # secrets.GITHUB_TOKEN do GitHub tự cấp, không cần tự tạo secret
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Bước 3: Chạy smoke test TRƯỚC khi push
+      # Script tự dựng Postgres + web rồi kiểm tra 8 điểm.
+      # Hỏng -> job dừng ngay, bước push bên dưới không chạy.
+      #
+      # LƯU Ý: script tự build từ source, nên đây là LẦN BUILD THỨ NHẤT.
+      # Bước 5 sẽ build lại lần nữa. Hai image đó thường giống nhau nhưng
+      # không có gì đảm bảo tuyệt đối. ci.yml giải quyết bằng cách build
+      # 1 lần rồi test đúng image đó.
+      - name: Smoke test
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh
+
+      # Bước 4: Cài QEMU để build được kiến trúc khác máy runner
+      # Runner là amd64; muốn có thêm bản arm64 (Mac M-series) thì cần giả lập.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Bước 5: Build và push image đa kiến trúc
+      # platforms tạo "manifest list": 1 tag chứa cả 2 bản.
+      # Máy nào pull sẽ tự nhận đúng bản của máy đó.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}

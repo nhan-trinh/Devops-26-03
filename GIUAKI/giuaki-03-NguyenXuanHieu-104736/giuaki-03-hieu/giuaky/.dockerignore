@@ -1,0 +1,17 @@
+node_modules
+frontend/node_modules
+frontend/dist
+backend/public
+lab/backend/node_modules
+lab/backend/public
+npm-debug.log
+.git
+.gitignore
+
+# Không đưa cấu hình/mật khẩu vào image - biến môi trường được Compose truyền lúc chạy
+.env
+.env.example
+
+# init.sql thuộc về service db, được mount qua volume chứ không nằm trong image web
+db/
+docker-compose.yml

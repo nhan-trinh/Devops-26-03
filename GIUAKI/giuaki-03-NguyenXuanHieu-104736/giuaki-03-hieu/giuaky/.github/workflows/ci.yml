@@ -1,0 +1,116 @@
+# ===================================================================
+# CI - GÁC CỔNG PULL REQUEST: BUILD -> TEST
+# ===================================================================
+# Chạy trên máy ảo của GitHub (ubuntu-latest, đã cài sẵn Docker).
+#
+# Nhiệm vụ DUY NHẤT: chặn code hỏng trước khi vào main.
+# File này KHÔNG push image - image thật do build-test-push.yml tạo
+# sau khi PR đã được merge.
+#
+# Phân vai:
+#   ci.yml              -> chạy trên Pull Request (gác cổng, không push)
+#   build-test-push.yml -> chạy khi push vào main (tạo image thật)
+# Hai file không bao giờ chạy cùng lúc.
+#
+# Nguyên tắc BUILD ĐÚNG MỘT LẦN:
+#   Build 1 lần rồi test chính image đó. Không build lại lần hai.
+#   Đây là điểm ci.yml làm tốt hơn build-test-push.yml.
+#
+# Vì sao chỉ build amd64?
+#   PR chỉ cần biết code chạy đúng hay không. App này thuần JavaScript,
+#   không có thư viện biên dịch native -> chạy y hệt trên mọi kiến trúc.
+#   Build thêm arm64 ở đây chỉ tốn thời gian mà không phát hiện thêm lỗi.
+#   Bản đa kiến trúc để dành cho build-test-push.yml, nơi tạo image thật.
+# ===================================================================
+
+name: CI - Pull Request Check
+
+on:
+  pull_request:
+    branches: [main]
+  # Cho phép bấm nút chạy tay trên tab Actions để thử
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # github.repository = "user/dictionary-app-5" -> tên image luôn khớp repo
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Chỉ cần đọc code. KHÔNG xin packages:write vì file này không push gì.
+      # Nguyên tắc bảo mật: chỉ cấp đúng quyền cần dùng.
+      contents: read
+
+    steps:
+      # ---------- BƯỚC 0: Lấy code ----------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ---------- Tính sẵn tag từ git SHA ----------
+      # Tag chỉ dùng nội bộ trong lần chạy này (đặt tên image để test).
+      # File này không push nên tag không đi đâu cả.
+      - name: Tạo tag từ commit SHA
+        id: meta
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          # Tên image trên GHCR phải viết thường, tên user/repo có thể có chữ hoa
+          IMAGE_LOWER=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "sha_short=$SHA_SHORT"            >> $GITHUB_OUTPUT
+          echo "tag_sha=$IMAGE_LOWER:$SHA_SHORT" >> $GITHUB_OUTPUT
+
+      # ---------- BƯỚC 1: BUILD ----------
+      # Build và nạp vào Docker local của runner để bước TEST dùng ngay.
+      # push: false - file này không đẩy image đi đâu cả.
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: BUILD image để test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64           # đúng kiến trúc runner -> build native, nhanh
+          load: true                       # nạp image vào docker local của runner
+          push: false                      # PR không đẩy image lên registry
+          tags: ${{ steps.meta.outputs.tag_sha }}
+          # Cache qua GitHub Actions cache: lần chạy sau nhanh hơn nhiều.
+          # Cache này dùng chung với build-test-push.yml.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ---------- BƯỚC 2: TEST ----------
+      # Chạy smoke-test trên CHÍNH image vừa build (biến SMOKE_IMAGE).
+      # Script dùng docker-compose.prod.yml -> KHÔNG build lại lần nữa.
+      # Đây là điểm ci.yml làm tốt hơn build-test-push.yml.
+      - name: TEST - chạy smoke test trên image vừa build
+        env:
+          SMOKE_IMAGE: ${{ steps.meta.outputs.tag_sha }}
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh
+
+      # ---------- Tóm tắt hiển thị trên trang Actions ----------
+      - name: Tóm tắt kết quả
+        if: always()
+        run: |
+          {
+            echo "### Kết quả kiểm tra Pull Request"
+            echo ""
+            echo "| Mục | Giá trị |"
+            echo "|---|---|"
+            echo "| Commit | \`${{ steps.meta.outputs.sha_short }}\` |"
+            echo "| Build | 1 lần, test đúng image đó |"
+            echo "| Push image | không (PR chỉ kiểm tra) |"
+            echo ""
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "Kiểm tra đạt - PR có thể merge."
+              echo ""
+              echo "Sau khi merge, \`build-test-push.yml\` sẽ tự chạy và đẩy"
+              echo "image đa kiến trúc lên GHCR."
+            else
+              echo "Kiểm tra KHÔNG đạt - xem log bước TEST bên trên."
+            fi
+          } >> $GITHUB_STEP_SUMMARY
