@@ -39,7 +39,7 @@ jobs:
         working-directory: ./server
 
   # ==========================================
-  # Build Backend
+  # Build Backend (Verify multi-arch)
   # ==========================================
   build-backend:
     name: Build BE
@@ -50,6 +50,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -58,12 +61,13 @@ jobs:
         with:
           context: ./server
           file: ./server/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: false
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
   # ==========================================
-  # Push Backend
+  # Push Backend (Multi-arch)
   # ==========================================
   push-backend:
     name: Push BE
@@ -75,6 +79,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -101,6 +108,7 @@ jobs:
         with:
           context: ./server
           file: ./server/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -131,7 +139,7 @@ jobs:
         working-directory: ./client
 
   # ==========================================
-  # Build Frontend
+  # Build Frontend (Verify multi-arch)
   # ==========================================
   build-frontend:
     name: Build FE
@@ -142,6 +150,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -150,12 +161,13 @@ jobs:
         with:
           context: ./client
           file: ./client/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: false
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
   # ==========================================
-  # Push Frontend
+  # Push Frontend (Multi-arch)
   # ==========================================
   push-frontend:
     name: Push FE
@@ -167,6 +179,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -193,6 +208,7 @@ jobs:
         with:
           context: ./client
           file: ./client/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
