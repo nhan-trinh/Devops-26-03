@@ -1,0 +1,46 @@
+services:
+  db:
+    build: ./db
+    container_name: dictionary-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  be:
+    build: ./backend
+    container_name: dictionary-be
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  fe:
+    build: ./frontend
+    container_name: dictionary-fe
+    environment:
+      VITE_API_PROXY: http://be:3000
+    ports:
+      - "${WEB_PORT}:5173"
+    depends_on:
+      - be
+
+volumes:
+  pgdata:
