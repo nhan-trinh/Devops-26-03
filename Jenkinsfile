@@ -98,7 +98,7 @@ pipeline {
           "BACKEND_IMAGE_TAG=${env.BACKEND_IMAGE}"
         ]) {
           sh """
-            docker compose -p ${DEPLOY_PROJECT} \\
+            mkdir -p ./server && touch ./server/.env && docker compose -p \ \\
               -f docker-compose.yml -f docker-compose.prod.yml \\
               up -d --remove-orphans
           """
@@ -117,3 +117,4 @@ pipeline {
     }
   }
 }
+
