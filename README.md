@@ -134,14 +134,6 @@ npm install
 npm run dev
 ```
 
----
-
-## 📄 Bản Quyền & Giấy Phép
-
-Dự án phục vụ mục đích học tập, nghiên cứu và phát triển phần mềm theo chuẩn DevOps.
-
----
-
 ## 🛠️ Hướng Dẫn Cấu Hình CI/CD Với Jenkins
 
 Dự án đã được tích hợp sẵn luồng CI/CD hoàn chỉnh bằng Jenkins, giúp tự động hóa quá trình Build, Push Docker Images và Deploy (sử dụng DooD - Docker outside of Docker).
@@ -166,3 +158,11 @@ Dự án đã được tích hợp sẵn luồng CI/CD hoàn chỉnh bằng Jenk
 6. Tại giao diện dự án, bấm **▶ Build Now** để Jenkins tự động thực thi.
 
 Khi quá trình kết thúc với thông báo **SUCCESS**, hệ thống sẽ tự động lên sóng và cập nhật phiên bản mới nhất!
+
+---
+
+## 📄 Bản Quyền & Giấy Phép
+
+Dự án phục vụ mục đích học tập, nghiên cứu và phát triển phần mềm theo chuẩn DevOps.
+
+---
