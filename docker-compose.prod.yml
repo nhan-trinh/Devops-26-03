@@ -1,0 +1,10 @@
+services:
+  frontend:
+    build: !reset null
+    image: ${FRONTEND_IMAGE_TAG}
+    container_name: !reset null
+
+  backend:
+    build: !reset null
+    image: ${BACKEND_IMAGE_TAG}
+    container_name: !reset null
