@@ -98,7 +98,7 @@ pipeline {
           "BACKEND_IMAGE_TAG=${env.BACKEND_IMAGE}"
         ]) {
           sh """
-            mkdir -p ./server && cp ./server/.env.example ./server/.env 2>/dev/null || touch ./server/.env && docker compose -p ${DEPLOY_PROJECT} \\
+            mkdir -p ./server && cp ./server/.env.example ./server/.env 2>/dev/null && sed -i "s/pk_test_your_clerk_publishable_key/pk_test_Zm9uZC1tdWxlLTIzLmNsZXJrLmFjY291bnRzLmRldiQ/g" ./server/.env || touch ./server/.env && docker compose -p ${DEPLOY_PROJECT} \\
               -f docker-compose.yml -f docker-compose.prod.yml \\
               up -d --remove-orphans
           """
@@ -117,6 +117,7 @@ pipeline {
     }
   }
 }
+
 
 
 
