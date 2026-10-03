@@ -139,3 +139,30 @@ npm run dev
 ## 📄 Bản Quyền & Giấy Phép
 
 Dự án phục vụ mục đích học tập, nghiên cứu và phát triển phần mềm theo chuẩn DevOps.
+
+---
+
+## 🛠️ Hướng Dẫn Cấu Hình CI/CD Với Jenkins
+
+Dự án đã được tích hợp sẵn luồng CI/CD hoàn chỉnh bằng Jenkins, giúp tự động hóa quá trình Build, Push Docker Images và Deploy (sử dụng DooD - Docker outside of Docker).
+
+### Các File Cấu Hình Chính:
+- **Jenkinsfile**: Chứa kịch bản (pipeline) các bước thực thi (Chuẩn bị, Build Frontend & Backend đa nền tảng, Push lên GHCR, Pull và Deploy).
+- **docker-compose.prod.yml**: Ghi đè cấu hình để Jenkins không tự build lại mã nguồn mà kéo trực tiếp Image đã được test từ Registry về chạy.
+- **Tự động xử lý cấu hình**: Pipeline tự động sao chép server/.env.example thành .env để vượt qua bài kiểm tra khóa (keys) của Clerk & ImageKit lúc khởi động.
+
+### Các Bước Cài Đặt Trên Jenkins:
+
+1. Đăng nhập vào Jenkins (ví dụ: http://localhost:8080).
+2. Tại màn hình **Dashboard**, bấm **New Item**.
+3. Nhập tên dự án (ví dụ: devops-26-03-cicd), chọn **Pipeline**, sau đó bấm **OK**.
+4. Cuộn xuống phần **Pipeline** và thiết lập chính xác như sau:
+   - **Definition:** Pipeline script from SCM
+   - **SCM:** Git
+   - **Repository URL:** Đường dẫn kho lưu trữ (ví dụ: https://github.com/nhan-trinh/Devops-26-03.git)
+   - **Branch Specifier:** Nhánh hiện tại của dự án (ví dụ: */master)
+   - **Script Path:** Jenkinsfile
+5. Bấm **Save**.
+6. Tại giao diện dự án, bấm **▶ Build Now** để Jenkins tự động thực thi.
+
+Khi quá trình kết thúc với thông báo **SUCCESS**, hệ thống sẽ tự động lên sóng và cập nhật phiên bản mới nhất!
