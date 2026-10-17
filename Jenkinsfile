@@ -7,14 +7,8 @@ pipeline {
 
   environment {
     REGISTRY   = 'ghcr.io'
-    // Ten GitHub cua ban (BAT BUOC viet thuong)
     GITHUB_USER = 'nhan-trinh'
-    
-    // Khai bao credential (tao trong Jenkins voi ID: ghcr-credentials)
     GHCR_CREDS = credentials('ghcr-credentials')
-
-    // Dung 'linux/amd64' cho may local de build nhanh, hoac 'linux/amd64,linux/arm64' neu can multi-arch
-    PLATFORMS = 'linux/amd64'
     DEPLOY_PROJECT = 'devops-26-03'
   }
 
@@ -28,24 +22,14 @@ pipeline {
     stage('Chuan bi') {
       steps {
         script {
-          env.SHA_SHORT  = sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()
-          
-          // Image tags
+          env.SHA_SHORT = sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()
           env.FRONTEND_IMAGE = "${REGISTRY}/${GITHUB_USER}/scm-frontend:${env.SHA_SHORT}"
           env.FRONTEND_LATEST = "${REGISTRY}/${GITHUB_USER}/scm-frontend:latest"
-          
           env.BACKEND_IMAGE = "${REGISTRY}/${GITHUB_USER}/scm-backend:${env.SHA_SHORT}"
           env.BACKEND_LATEST = "${REGISTRY}/${GITHUB_USER}/scm-backend:latest"
         }
-
         echo "Se push len GHCR voi tai khoan: ${GITHUB_USER}"
-
-        sh '''
-          echo "$GHCR_CREDS_PSW" | docker login ${REGISTRY} -u "$GHCR_CREDS_USR" --password-stdin
-          docker run --privileged --rm tonistiigi/binfmt --install all || true
-          docker buildx create --name multiarch --driver docker-container --use 2>/dev/null || docker buildx use multiarch
-          docker buildx inspect --bootstrap
-        '''
+        sh 'echo "$GHCR_CREDS_PSW" | docker login ${REGISTRY} -u "$GHCR_CREDS_USR" --password-stdin'
       }
     }
 
@@ -55,12 +39,12 @@ pipeline {
           steps {
             echo "=== Build & Push Frontend ==="
             sh """
-              docker buildx build \
-                --platform ${PLATFORMS} \
+              docker build \
                 --tag ${env.FRONTEND_IMAGE} \
                 --tag ${env.FRONTEND_LATEST} \
-                --push \
                 ./client
+              docker push ${env.FRONTEND_IMAGE}
+              docker push ${env.FRONTEND_LATEST}
             """
           }
         }
@@ -68,12 +52,12 @@ pipeline {
           steps {
             echo "=== Build & Push Backend ==="
             sh """
-              docker buildx build \
-                --platform ${PLATFORMS} \
+              docker build \
                 --tag ${env.BACKEND_IMAGE} \
                 --tag ${env.BACKEND_LATEST} \
-                --push \
                 ./server
+              docker push ${env.BACKEND_IMAGE}
+              docker push ${env.BACKEND_LATEST}
             """
           }
         }
