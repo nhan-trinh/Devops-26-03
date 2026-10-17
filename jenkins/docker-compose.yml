@@ -1,5 +1,5 @@
-# Docker Compose để chạy Jenkins trên máy Local (Laptop/PC)
-# Sử dụng cơ chế Docker-outside-of-Docker (DooD) bằng cách mount docker.sock
+# Docker Compose de chay Jenkins tren may Local
+# Su dung co che Docker-outside-of-Docker (DooD) va mount truc tiep source code local
 
 services:
   jenkins:
@@ -7,24 +7,25 @@ services:
     container_name: jenkins
     ports:
       - "8080:8080"    # Web UI Jenkins
-      - "50000:50000"  # Cổng kết nối Agent (nếu dùng)
+      - "50000:50000"  # Cong agent
     volumes:
-      # Lưu trữ toàn bộ dữ liệu Jenkins (Jobs, Build history, Credentials, Plugins)
-      - jenkins_home:/var/jenkins_home
+      # Luu tru toan bo du lieu Jenkins da co san
+      - jenkins_jenkins_home:/var/jenkins_home
 
-      # Mount Docker socket của máy Host vào container Jenkins
-      # Giúp Jenkins điều khiển Docker daemon của máy host để build và deploy container
+      # Mount Docker socket may Host
       - /var/run/docker.sock:/var/run/docker.sock
 
+      # Mount truc tiep repo local vao /repo (GIUP CHECKOUT TRONG 0.5 GIAY KHONG BI NGHEN MANG GITHUB)
+      - D:\DevOps-test\Devops-26-03:/repo:ro
+
     group_add:
-      # Cấp quyền đọc/ghi docker.sock cho user jenkins
       - "0"
 
     environment:
-      # Bỏ qua Setup Wizard khởi động (tiết kiệm thời gian)
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
 
     restart: unless-stopped
 
 volumes:
-  jenkins_home:
+  jenkins_jenkins_home:
+    external: true
