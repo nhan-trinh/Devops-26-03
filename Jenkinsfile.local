@@ -24,20 +24,17 @@ pipeline {
       }
     }
 
-    stage('2. BUILD IMAGES (LOCAL)') {
-      parallel {
-        stage('Build Frontend') {
-          steps {
-            echo "=== Build Frontend Container ==="
-            sh "docker compose -p ${DEPLOY_PROJECT} build frontend"
-          }
-        }
-        stage('Build Backend') {
-          steps {
-            echo "=== Build Backend Container ==="
-            sh "docker compose -p ${DEPLOY_PROJECT} build backend"
-          }
-        }
+    stage('2a. BUILD Backend') {
+      steps {
+        echo "=== Build Backend Container ==="
+        sh "docker compose -p ${DEPLOY_PROJECT} build backend"
+      }
+    }
+
+    stage('2b. BUILD Frontend') {
+      steps {
+        echo "=== Build Frontend Container ==="
+        sh "docker compose -p ${DEPLOY_PROJECT} build frontend"
       }
     }
 
