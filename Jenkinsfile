@@ -33,34 +33,31 @@ pipeline {
       }
     }
 
-    stage('1. BUILD & PUSH') {
-      parallel {
-        stage('Frontend') {
-          steps {
-            echo "=== Build & Push Frontend ==="
-            sh """
-              docker build \
-                --tag ${env.FRONTEND_IMAGE} \
-                --tag ${env.FRONTEND_LATEST} \
-                ./client
-              docker push ${env.FRONTEND_IMAGE}
-              docker push ${env.FRONTEND_LATEST}
-            """
-          }
-        }
-        stage('Backend') {
-          steps {
-            echo "=== Build & Push Backend ==="
-            sh """
-              docker build \
-                --tag ${env.BACKEND_IMAGE} \
-                --tag ${env.BACKEND_LATEST} \
-                ./server
-              docker push ${env.BACKEND_IMAGE}
-              docker push ${env.BACKEND_LATEST}
-            """
-          }
-        }
+    stage('1a. BUILD Backend') {
+      steps {
+        echo "=== Build & Push Backend ==="
+        sh """
+          docker build --network=host \
+            --tag ${env.BACKEND_IMAGE} \
+            --tag ${env.BACKEND_LATEST} \
+            ./server
+          docker push ${env.BACKEND_IMAGE}
+          docker push ${env.BACKEND_LATEST}
+        """
+      }
+    }
+
+    stage('1b. BUILD Frontend') {
+      steps {
+        echo "=== Build & Push Frontend ==="
+        sh """
+          docker build --network=host \
+            --tag ${env.FRONTEND_IMAGE} \
+            --tag ${env.FRONTEND_LATEST} \
+            ./client
+          docker push ${env.FRONTEND_IMAGE}
+          docker push ${env.FRONTEND_LATEST}
+        """
       }
     }
 
