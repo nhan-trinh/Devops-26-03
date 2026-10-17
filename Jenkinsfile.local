@@ -1,0 +1,77 @@
+// ===================================================================
+// Pipeline Jenkins CI/CD Chay Thuan Local (Khong can push Registry)
+// ===================================================================
+
+pipeline {
+  agent any
+
+  environment {
+    DEPLOY_PROJECT = 'devops-26-03'
+  }
+
+  options {
+    timestamps()
+    timeout(time: 20, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+  }
+
+  stages {
+    stage('1. KIEM TRA MOI TRUONG') {
+      steps {
+        echo "=== Kiem tra Docker Daemon & Compose ==="
+        sh "docker version"
+        sh "docker compose version"
+      }
+    }
+
+    stage('2. BUILD IMAGES (LOCAL)') {
+      parallel {
+        stage('Build Frontend') {
+          steps {
+            echo "=== Build Frontend Container ==="
+            sh "docker compose -p ${DEPLOY_PROJECT} build frontend"
+          }
+        }
+        stage('Build Backend') {
+          steps {
+            echo "=== Build Backend Container ==="
+            sh "docker compose -p ${DEPLOY_PROJECT} build backend"
+          }
+        }
+      }
+    }
+
+    stage('3. DEPLOY & RUN') {
+      steps {
+        echo "=== Khoi chay toan bo he thong microservices ==="
+        sh """
+          mkdir -p ./server
+          if [ ! -f ./server/.env ]; then
+            cp ./server/.env.example ./server/.env 2>/dev/null || touch ./server/.env
+            sed -i "s/pk_test_your_clerk_publishable_key/pk_test_Zm9uZC1tdWxlLTIzLmNsZXJrLmFjY291bnRzLmRldiQ/g" ./server/.env
+            sed -i "s|mongodb://localhost:27017|mongodb://mongodb:27017|g" ./server/.env
+          fi
+          docker compose -p ${DEPLOY_PROJECT} up -d --remove-orphans
+        """
+      }
+    }
+
+    stage('4. HEALTHCHECK & VERIFY') {
+      steps {
+        echo "=== Kiem tra trang thai cac container ==="
+        sh """
+          docker compose -p ${DEPLOY_PROJECT} ps
+        """
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "=== THANH CONG! He thong da san sang tai http://localhost:5173 ==="
+    }
+    always {
+      sh 'docker image prune -f --filter "until=168h" || true'
+    }
+  }
+}
